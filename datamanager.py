@@ -203,11 +203,9 @@ class DataManager(object):
     def _write_file(self, split_data, splitname):
         filename = os.path.join(self.dataset_path, splitname+'.csv')
         with open(filename,'w') as f:
+            writer = csv.writer(f, delimiter=',')
             for row in split_data:
-                write_list = [str(item) for item in row]
-                writeline = ','.join(write_list)
-                f.write(writeline)
-                f.write('\n')
+                writer.writerow(row)
 
     def _make_1hot(self):
         train_1hot = self._split_to_1hot(self.train_raw)
