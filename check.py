@@ -3,8 +3,13 @@ from datamanager import *
 
 # Prepare Dataset
 # Iris Dataset
-filepath = 'data/iris/iris.data'
-data_manager = IrisData(filepath, (0.7,0.15,0.15))
+# filepath = 'data/iris/iris.data'
+# data_manager = IrisData(filepath, (0.7,0.15,0.15))
+
+# Task Dataset
+filepath = 'data/task/task1.csv'
+data_manager = TaskData(filepath, (0.8,0.10,0.10))
+
 
 data_manager.init_dataset()
 X, Y = data_manager.prepare_train()

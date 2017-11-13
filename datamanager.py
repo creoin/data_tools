@@ -11,7 +11,7 @@ class DataManager(object):
     """
     def __init__(self, filepath, split):
         self.filepath = filepath
-        self.split = split       # train/valid/test fractions, should sum to 1
+        self.split = self._check_split(split)       # train/valid/test fractions, should sum to 1
         self.label_to_idx = {}
         self.idx_to_label = {}
         self.indexes = set()
@@ -271,6 +271,11 @@ class DataManager(object):
             self.indexes.add(idx)
             self.num_classes += 1
 
+    def _check_split(self, split, eps=1e-8):
+        split_sum = sum(split)
+        assert abs(1.0 - split_sum) < eps, "Split fractions should add up to one. Split: {}".format(split)
+        return split
+
     def _process_row_raw(self, row):
         """
         Import lines from raw data file.
@@ -331,7 +336,6 @@ class TaskData(DataManager):
         super().__init__(filepath, split)
         self.filepath = filepath
         self.split = split       # train/valid/test fractions, should sum to 1
-        # self.num_classes = 0
         self.discard_header = True
         self.dataset_path = './data/task'
 
