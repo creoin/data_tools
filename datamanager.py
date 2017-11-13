@@ -3,6 +3,7 @@ import numpy as np
 import csv
 import copy
 from random import randint
+from random import shuffle
 
 class DataManager(object):
     """
@@ -154,34 +155,45 @@ class DataManager(object):
         """
         train, valid, test = [], [], []
         n_data = len(original_data)
-        n_train, n_valid, n_test = (int(n_data*fraction) for fraction in self.split)
-        n_valid = n_data - n_train - n_test
         count = {'train': 0, 'valid': 0, 'test': 0}
 
         # split by class to fill train/valid/test with even class distribution
         data_by_class = self._split_into_classes(original_data)
+        # get the number examples of each class needed for each split
+        # e.g. 80% train means 80% of class 1, 80% of class 2, etc.
+        n_train, n_valid, n_test = self._get_split_counts_by_class(data_by_class)
 
-        while True:
-            # fill train/valid/test with a pass through classes
-            for data in data_by_class:
-                if not data:
-                    continue
-                pop_idx = randint(0, len(data)-1)
-                data_line = data.pop(pop_idx)
-                if count['train'] < n_train:
+        # loop through data one class at a time
+        cls_counts = []
+        for class_idx, class_data in enumerate(data_by_class):
+            cls_count = {'train': 0, 'valid': 0, 'test': 0}
+            if not class_data:
+                continue
+            # pick through class data until empty
+            while True:
+                pop_idx = randint(0, len(class_data)-1)
+                data_line = class_data.pop(pop_idx)
+                if cls_count['train'] < n_train[class_idx]:
                     train.append(data_line)
-                    count['train'] += 1
-                elif count['valid'] < n_valid:
+                    cls_count['train'] += 1
+                elif cls_count['valid'] < n_valid[class_idx]:
                     valid.append(data_line)
-                    count['valid'] += 1
+                    cls_count['valid'] += 1
                 else:
                     test.append(data_line)
-                    count['test'] += 1
+                    cls_count['test'] += 1
+                if len(class_data) == 0:
+                    break
+            # accumulate counts
+            for split_name in count.keys():
+                count[split_name] += cls_count[split_name]
+            cls_counts.append(cls_count)
 
-            # keep taking passes until data_by_class is empty
-            remaining = [len(data) for data in data_by_class]
-            if sum(remaining) == 0:
-                break
+        for split_set in [train, valid, test]:
+            shuffle(split_set)
+
+        self._print_counts(cls_counts, count.keys())
+
         return train, valid, test
 
     def _split_into_classes(self, original_data):
@@ -193,6 +205,23 @@ class DataManager(object):
         for data_line in original_data:
             data_by_class[data_line[-1]].append(data_line)  # last entry should be target index
         return copy.deepcopy(data_by_class)
+
+    def _get_split_counts_by_class(self, data_by_class):
+        n_splits = []
+        n_of_class = [len(class_set) for class_set in data_by_class]
+        for fraction in self.split:
+            n_split = [int(num * fraction) for num in n_of_class]
+            n_splits.append(n_split)
+        return n_splits
+
+    def _print_counts(self, cls_counts, split_names):
+        # Counts accumulated from processing
+        for name in split_names:
+            c_counts = [0, 0, 0]
+            for c_idx in range(3):
+                c_counts[c_idx] = cls_counts[c_idx][name]
+            print("Split {} has ({}, {}, {}) examples of each class".format(
+                name, c_counts[0], c_counts[1], c_counts[2]))
 
     # Writing split dataset files
     def _write_split_files(self, train, valid, test):
