@@ -9,14 +9,18 @@ class DataManager(object):
     """
     Class to manage data handling. Just CSV import for now.
     """
-    def __init__(self, filepath, split):
+    def __init__(self, filepath, split, one_hot_encode=True, output_numpy=True):
         self.filepath = filepath
         self.split = self._check_split(split)       # train/valid/test fractions, should sum to 1
         self.label_to_idx = {}
         self.idx_to_label = {}
         self.indexes = set()
+
+        # Switches
         self.initialised = False
         self.discard_header = False
+        self.one_hot_encode = one_hot_encode
+        self.output_numpy = output_numpy
 
         self.num_classes = 0  # Number of classes in dataset
         self.dataset_path = './data/dataset_name'  # replace dataset_name in child class
@@ -25,6 +29,8 @@ class DataManager(object):
         self.split_data_paths = {'train': os.path.join(self.dataset_path, 'train.csv'),
                                  'valid': os.path.join(self.dataset_path, 'valid.csv'),
                                  'test' : os.path.join(self.dataset_path, 'test.csv')}
+        if not os.path.exists(self.dataset_path):
+            os.makedirs(self.dataset_path)
         if os.path.isfile(self.split_data_paths['train']):
             print('Train/Valid/Test data found, loading...')
             self.train_raw, self.valid_raw, self.test_raw = self._load_data()
@@ -40,7 +46,10 @@ class DataManager(object):
         # print('num_classes: ', self.num_classes)
         # print('\n\n')
 
-        self.train, self.valid, self.test = self._make_1hot()
+        if self.one_hot_encode:
+            self.train, self.valid, self.test = self._make_1hot()
+        else:
+            self.train, self.valid, self.test = (self.train_raw, self.valid_raw, self.test_raw)
 
         # print('\n\nTrain 1-hot\n')
         # for tr in self.train[:50]:
@@ -76,8 +85,9 @@ class DataManager(object):
         Separate data split into X and Y and convert to numpy array.
         """
         X, Y = zip(*split)
-        X = np.array(X)
-        Y = np.array(Y)
+        if self.output_numpy:
+            X = np.array(X)
+            Y = np.array(Y)
         return X, Y
 
     # Loading already split dataset files
@@ -332,11 +342,14 @@ class IrisData(DataManager):
 
 
 class TaskData(DataManager):
-    def __init__(self, filepath, split):
+    def __init__(self, filepath, split, one_hot_encode=True, output_numpy=True):
         super().__init__(filepath, split)
         self.filepath = filepath
         self.split = split       # train/valid/test fractions, should sum to 1
         self.discard_header = True
+        self.one_hot_encode = one_hot_encode
+        self.output_numpy = output_numpy
+
         self.dataset_path = './data/task'
 
     def _process_row_raw(self, row):
@@ -365,4 +378,42 @@ class TaskData(DataManager):
         task_label = int(float(row[-1]))
         count = self._count_idx(task_label)  # count the number of classes
         read_line.extend([task_x, task_y, task_label])
+        return read_line
+
+
+class SpookyData(DataManager):
+    def __init__(self, filepath, split, one_hot_encode=True, output_numpy=True):
+        super().__init__(filepath, split, one_hot_encode, output_numpy)
+        self.filepath = filepath
+        self.split = split       # train/valid/test fractions, should sum to 1
+        self.dataset_path = 'data/spooky_author_identification/processed'
+        self.discard_header = True
+
+    def _process_row_raw(self, row):
+        """
+        Import lines from raw data file.
+        Imports line of "ID, text, author"
+        Returns list of [ID, text, author, author_index]
+        """
+        read_line = []
+        spooky_id    = row[0]
+        spooky_text  = row[1]
+        spooky_label = row[2]
+        label_idx = self._get_idx(spooky_label)
+        read_line.extend([spooky_id, spooky_text, spooky_label, label_idx])
+        return read_line
+
+    def _process_row_split(self, row):
+        """
+        Import lines from train/valid/test split files.
+        Imports line of "ID, text, author, author_index"
+        Returns list of [text, author]
+        """
+        read_line = []
+
+        spooky_text      = row[1]
+        spooky_label     = row[2]
+        spooky_label_idx = int(float(row[-1]))
+        fetch_idx = self._get_idx(spooky_label)  # rebuilds num_classes
+        read_line.extend([spooky_text, spooky_label])
         return read_line
