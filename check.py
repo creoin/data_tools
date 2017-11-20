@@ -52,3 +52,14 @@ print('Train')
 print(train_x[:3])
 print(train_y[:3])
 print(type(train_x))
+
+from batches import *
+print('\n\n\n')
+print('Check Batches')
+print('Make 3 epochs of batches of 2 elements, from 6 examples')
+
+batches = Batches(2)
+for i, epoch in enumerate(batches.gen_padded_batch_epochs(train_set[:6], 3)):
+    print('\n\nEpoch {}'.format(i))
+    for step, (batch_x, batch_y, lengths) in enumerate(epoch):
+        print('{:5d}\n{}\n{}\n\n'.format(step, batch_x, batch_y))
