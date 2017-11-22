@@ -226,12 +226,14 @@ class DataManager(object):
 
     def _print_counts(self, cls_counts, split_names):
         # Counts accumulated from processing
+        n_classes = len(cls_counts)
         for name in split_names:
-            c_counts = [0, 0, 0]
-            for c_idx in range(3):
+            c_counts = [0 for _ in range(n_classes)]
+            print('Split {} has ( '.format(name), end='')
+            for c_idx in range(n_classes):
                 c_counts[c_idx] = cls_counts[c_idx][name]
-            print("Split {} has ({}, {}, {}) examples of each class".format(
-                name, c_counts[0], c_counts[1], c_counts[2]))
+                print('{}, '.format(c_counts[c_idx]), end='')
+            print(') examples of each class')
 
     # Writing split dataset files
     def _write_split_files(self, train, valid, test):
